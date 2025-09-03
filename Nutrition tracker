@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gym Nutrition Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-10 w-full max-w-4xl space-y-8">
+        <header class="text-center space-y-2">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-blue-400">Gym Nutrition Tracker</h1>
+            <p class="text-lg md:text-xl text-gray-400">Track your daily calories, protein, and water intake.</p>
+        </header>
+
+        <!-- Daily Totals Section -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+            <div class="bg-gray-700 p-6 rounded-2xl shadow-inner border-t-4 border-t-blue-500">
+                <p class="text-xl md:text-2xl font-bold text-blue-300">Total Calories</p>
+                <p id="totalCalories" class="text-4xl md:text-5xl font-extrabold mt-2 text-white">0</p>
+            </div>
+            <div class="bg-gray-700 p-6 rounded-2xl shadow-inner border-t-4 border-t-blue-500">
+                <p class="text-xl md:text-2xl font-bold text-blue-300">Total Protein (g)</p>
+                <p id="totalProtein" class="text-4xl md:text-5xl font-extrabold mt-2 text-white">0</p>
+            </div>
+            <div class="bg-gray-700 p-6 rounded-2xl shadow-inner border-t-4 border-t-blue-500">
+                <p class="text-xl md:text-2xl font-bold text-blue-300">Total Water (L)</p>
+                <p id="totalWater" class="text-4xl md:text-5xl font-extrabold mt-2 text-white">0</p>
+            </div>
+        </div>
+
+        <!-- Input Section -->
+        <div class="bg-gray-700 p-6 rounded-2xl shadow-inner space-y-6">
+            <h2 class="text-2xl md:text-3xl font-semibold text-white">Log Your Intake</h2>
+
+            <!-- Calorie & Protein Input -->
+            <div class="flex flex-col md:flex-row gap-4">
+                <input type="text" id="foodName" placeholder="Food Name (e.g., Chicken)" class="flex-1 p-4 rounded-xl bg-gray-600 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">
+                <input type="number" id="calorieInput" placeholder="Calories" class="w-full md:w-1/3 p-4 rounded-xl bg-gray-600 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">
+                <input type="number" id="proteinInput" placeholder="Protein (g)" class="w-full md:w-1/3 p-4 rounded-xl bg-gray-600 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">
+            </div>
+            <button id="addFoodBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl transition duration-300 transform hover:scale-105 shadow-lg">Add Food</button>
+            
+            <hr class="border-gray-600 my-6">
+
+            <!-- Water Input -->
+            <div class="flex flex-col md:flex-row items-center gap-4">
+                <input type="number" id="waterInput" placeholder="Water (L)" class="flex-1 p-4 rounded-xl bg-gray-600 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">
+                <button id="addWaterBtn" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl transition duration-300 transform hover:scale-105 shadow-lg">Add Water</button>
+            </div>
+        </div>
+
+        <!-- Logged Items Section -->
+        <div class="bg-gray-800 p-6 rounded-2xl shadow-inner space-y-4">
+            <h2 class="text-2xl md:text-3xl font-semibold text-white">Your Logged Items</h2>
+            <ul id="logList" class="space-y-4">
+                <!-- Log items will be inserted here by JavaScript -->
+            </ul>
+        </div>
+        
+        <!-- Reset Button -->
+        <div class="text-center">
+            <button id="resetBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition duration-300 transform hover:scale-105 shadow-lg">Reset Daily Intake</button>
+        </div>
+    </div>
+
+    <script>
+        // Check if localStorage is available
+        const isLocalStorageAvailable = typeof(Storage) !== "undefined";
+
+        // DOM elements
+        const totalCaloriesEl = document.getElementById('totalCalories');
+        const totalProteinEl = document.getElementById('totalProtein');
+        const totalWaterEl = document.getElementById('totalWater');
+        const foodNameInput = document.getElementById('foodName');
+        const calorieInput = document.getElementById('calorieInput');
+        const proteinInput = document.getElementById('proteinInput');
+        const waterInput = document.getElementById('waterInput');
+        const addFoodBtn = document.getElementById('addFoodBtn');
+        const addWaterBtn = document.getElementById('addWaterBtn');
+        const logListEl = document.getElementById('logList');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // Initial state
+        let totals = {
+            calories: 0,
+            protein: 0,
+            water: 0
+        };
+        let logItems = [];
+
+        /**
+         * Saves the current totals and log items to localStorage.
+         */
+        function saveData() {
+            if (isLocalStorageAvailable) {
+                localStorage.setItem('nutritionTrackerTotals', JSON.stringify(totals));
+                localStorage.setItem('nutritionTrackerLog', JSON.stringify(logItems));
+            }
+        }
+
+        /**
+         * Loads data from localStorage on page load.
+         */
+        function loadData() {
+            if (isLocalStorageAvailable) {
+                const storedTotals = localStorage.getItem('nutritionTrackerTotals');
+                const storedLog = localStorage.getItem('nutritionTrackerLog');
+
+                if (storedTotals) {
+                    totals = JSON.parse(storedTotals);
+                }
+                if (storedLog) {
+                    logItems = JSON.parse(storedLog);
+                }
+            }
+        }
+
+        /**
+         * Renders the current totals to the UI.
+         */
+        function renderTotals() {
+            totalCaloriesEl.textContent = totals.calories;
+            totalProteinEl.textContent = totals.protein;
+            totalWaterEl.textContent = totals.water.toFixed(2); // Keep water to 2 decimal places
+        }
+
+        /**
+         * Renders the log items to the UI.
+         */
+        function renderLogItems() {
+            logListEl.innerHTML = ''; // Clear the list
+            logItems.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'bg-gray-600 p-4 rounded-xl flex justify-between items-center';
+                
+                let content = '';
+                if (item.type === 'food') {
+                    content = `<span class="font-semibold text-blue-300">${item.name}</span>
+                               <span class="text-gray-400">${item.calories} cal, ${item.protein}g protein</span>`;
+                } else if (item.type === 'water') {
+                    content = `<span class="font-semibold text-blue-300">Water</span>
+                               <span class="text-gray-400">${item.amount.toFixed(2)} L</span>`;
+                }
+                li.innerHTML = content;
+                logListEl.appendChild(li);
+            });
+        }
+
+        /**
+         * Adds a food item to the tracker.
+         */
+        addFoodBtn.addEventListener('click', () => {
+            const foodName = foodNameInput.value.trim();
+            const calories = parseInt(calorieInput.value, 10) || 0;
+            const protein = parseInt(proteinInput.value, 10) || 0;
+
+            if (foodName && (calories > 0 || protein > 0)) {
+                totals.calories += calories;
+                totals.protein += protein;
+                
+                logItems.push({ type: 'food', name: foodName, calories: calories, protein: protein });
+                
+                foodNameInput.value = '';
+                calorieInput.value = '';
+                proteinInput.value = '';
+                
+                renderTotals();
+                renderLogItems();
+                saveData();
+            }
+        });
+
+        /**
+         * Adds water to the tracker.
+         */
+        addWaterBtn.addEventListener('click', () => {
+            const waterAmount = parseFloat(waterInput.value) || 0;
+
+            if (waterAmount > 0) {
+                totals.water += waterAmount;
+
+                logItems.push({ type: 'water', amount: waterAmount });
+
+                waterInput.value = '';
+
+                renderTotals();
+                renderLogItems();
+                saveData();
+            }
+        });
+
+        /**
+         * Resets all data for the day.
+         */
+        resetBtn.addEventListener('click', () => {
+            if (isLocalStorageAvailable) {
+                // To avoid the alert, we use a custom message in the UI
+                const confirmed = confirm('Are you sure you want to reset all data for the day?');
+                if (confirmed) {
+                    totals.calories = 0;
+                    totals.protein = 0;
+                    totals.water = 0;
+                    logItems = [];
+
+                    renderTotals();
+                    renderLogItems();
+                    saveData();
+                }
+            } else {
+                 // Fallback for no localStorage
+                 const message = document.createElement('div');
+                 message.textContent = 'Data reset is not supported without localStorage.';
+                 message.className = 'text-red-500 text-center mt-4';
+                 document.body.appendChild(message);
+                 setTimeout(() => message.remove(), 3000);
+            }
+        });
+
+        // Initialize the app
+        window.onload = () => {
+            if (isLocalStorageAvailable) {
+                loadData();
+            } else {
+                console.warn('localStorage is not available. Data will not be saved between sessions.');
+            }
+            renderTotals();
+            renderLogItems();
+        };
+
+    </script>
+</body>
+</html>
